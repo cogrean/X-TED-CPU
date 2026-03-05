@@ -1,0 +1,37 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.env
+
+# Build output
+dist/
+wheelhouse/
+*.whl
+*.egg-info/
+
+# Compiled C++ extensions
+*.so
+*.dylib
+*.o
+
+# C++ Makefile targets (cpp/Makefile)
+cpp/test_xted
+cpp/bench_compare
+cpp/ref_wrapper.o
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+build/
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
