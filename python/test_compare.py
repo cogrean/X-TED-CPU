@@ -21,7 +21,7 @@ import os
 import time
 import pytest
 import zss
-import TEST_XTED_REF
+from xted_cpu import TEST_XTED_REF
 from xted_cpu import x_ted_compute
 
 

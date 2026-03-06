@@ -1,4 +1,4 @@
-import XTED_CPU
+from . import XTED_CPU
 import spacy
 import numpy
 
