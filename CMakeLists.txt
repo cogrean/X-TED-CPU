@@ -18,4 +18,4 @@ pybind11_add_module(TEST_XTED_REF
 target_include_directories(TEST_XTED_REF PRIVATE cpp/TEST_XTED_CPU_IMPLEMENTATION)
 target_link_libraries(TEST_XTED_REF PRIVATE Threads::Threads)
 
-install(TARGETS XTED_CPU TEST_XTED_REF DESTINATION xted_cpu)
+install(TARGETS XTED_CPU TEST_XTED_REF DESTINATION xted)

@@ -5,7 +5,7 @@ A parallel CPU implementation of the Zhang-Shasha Tree Edit Distance (TED) algor
 ## Installation (coming soon)
 
 ```bash
-pip install xted-cpu
+pip install x-ted
 ```
 
 Or from source (requires a C++ compiler and CMake (version 3.23)):
@@ -19,7 +19,7 @@ pip install .
 ## Usage
 
 ```python
-from xted-cpu import x_ted_compute
+from xted import x_ted_compute
 
 # Trees must be in DFS preorder. adj[i] = list of child indices for node i.
 #     a
@@ -63,7 +63,7 @@ x_ted_compute(adj1, labels1, adj2, labels2, num_threads=4)
 ### From text (spaCy dependency parse trees)
 
 ```python
-from xted_cpu import x_ted_compute_from_text
+from xted import x_ted_compute_from_text
 
 distance = x_ted_compute_from_text("The cat sat.", "A dog ran.")
 ```

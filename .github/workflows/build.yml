@@ -19,6 +19,7 @@ jobs:
           CIBW_BUILD: cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_BUILD_VERBOSITY: 1
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - uses: actions/upload-artifact@v4
         with:
@@ -41,6 +42,7 @@ jobs:
           CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
           CIBW_ARCHS: aarch64
           CIBW_BUILD_VERBOSITY: 1
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - uses: actions/upload-artifact@v4
         with:
@@ -57,6 +59,7 @@ jobs:
         env:
           CIBW_BUILD: cp39-macosx_arm64 cp310-macosx_arm64 cp311-macosx_arm64 cp312-macosx_arm64 cp313-macosx_arm64
           CIBW_BUILD_VERBOSITY: 1
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - uses: actions/upload-artifact@v4
         with:
@@ -73,6 +76,7 @@ jobs:
         env:
           CIBW_BUILD: cp39-win_amd64 cp310-win_amd64 cp311-win_amd64 cp312-win_amd64 cp313-win_amd64
           CIBW_BUILD_VERBOSITY: 1
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - uses: actions/upload-artifact@v4
         with:
