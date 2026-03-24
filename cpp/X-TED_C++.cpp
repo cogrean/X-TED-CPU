@@ -93,7 +93,7 @@ namespace xted
             return key_roots_view;
         }
 
-        //branchless compilations (cmov) for x86, and standard implementation (2 comparisons) for non-x86
+        // branchless compilations (cmov) for x86, and standard implementation (2 comparisons) for non-x86
         inline int min3(int a, int b, int c)
         {
             int ab = a < b ? a : b;
@@ -120,12 +120,12 @@ namespace xted
             int column = task % L;
             compute(row, column, x_orl, x_kr, y_orl, y_kr, Cost, D, D_tree);
 
-            //advances
+            // advances
             i = i + interval;
         }
     }
 
-    //computes table
+    // computes table
     void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree)
     {
         int i;
@@ -200,7 +200,7 @@ namespace xted
     }
 
     /*
-    Uniform-cost variant: rename costs 0 for matching labels, 1 otherwise. Builds the cost
+    Uniform-cost variant: costs 0 for matching labels, 1 otherwise. Builds the cost
     matrix internally so no Python-side construction or pybind11 STL conversion is needed.
     */
     int XTED_CPU_uniform(vector<string> label1, vector<vector<int>> parent1, vector<string> label2, vector<vector<int>> parent2, int num_threads)
@@ -242,7 +242,7 @@ namespace xted
         int K = (int)x_kr.size();
         int L = (int)y_kr.size();
 
-        //creates num_th amount of D trees for threads to work within
+        // creates num_th amount of D trees for threads to work within
         int num_th = num_threads;
         vector<vector<vector<int>>> D_in_total;
         for (int i = 0; i < num_th; i++)
@@ -258,7 +258,7 @@ namespace xted
 
         // Preprocessing begins
 
-        //assigns depth to each keyroot for X
+        // assigns depth to each keyroot for X
         for (int i = 0; i < K; i++)
         {
             int node = x_kr[i];
@@ -279,7 +279,7 @@ namespace xted
             }
         }
 
-        //depth assignment for Y
+        // depth assignment for Y
         for (int i = 0; i < L; i++)
         {
             int node = y_kr[i];
@@ -300,7 +300,7 @@ namespace xted
             }
         }
 
-        //depth calculation considering both trees
+        // depth calculation considering both trees
         for (int i = 0; i < K * L; i++)
         {
             depth[i] = x_keyroot_depth[i / L] + y_keyroot_depth[i % L];
@@ -308,14 +308,14 @@ namespace xted
 
         // Preprocessing ends
 
-        //TODO: add logging for time it takes to preprocess and compare against running times
+        // TODO: add logging for time it takes to preprocess and compare against running times
 
         vector<int> worklist1(K * L, -1);
         vector<int> worklist2(K * L, -1);
         int worklist1_tail = 0;
         int worklist2_tail = 0;
 
-        //first filling of the worklist vector 
+        // first filling of the worklist vector
         int current_depth = 0;
         for (int i = 0; i < K * L; i++)
         {
@@ -356,7 +356,7 @@ namespace xted
             auto ms = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
             total_time += static_cast<double>(ms / 1000.0);
 
-            //update current depth and refill worklist
+            // update current depth and refill worklist
             current_depth++;
             for (int i = 0; i < K * L; i++)
             {

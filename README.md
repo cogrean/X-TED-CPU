@@ -50,7 +50,7 @@ cost = [[0, 2],
 x_ted_compute(adj1, labels1, adj2, labels2, cost_matrix=cost)
 ```
 
-TO CLARIFY: Passed-in matrices must have a distance of 0 for labels that are matching, or else the output of the distance function will NOT be 0. //TODO: Maybe change this
+TO CLARIFY: Passed-in cost matrices must have a distance of 0 for labels that are matching.
 
 ### Multithreading
 
@@ -59,6 +59,22 @@ x_ted_compute(adj1, labels1, adj2, labels2, num_threads=4)
 ```
 
 (4 seems to be the optimal amount of threads for trees under ~500 nodes due to synchronization overhead)
+
+### Batch computation
+
+```python
+from xted import x_ted_batch_compute
+
+pairs = [
+    (adj1, labels1, adj2, labels2),
+    (adj3, labels3, adj4, labels4),
+]
+
+distances = x_ted_batch_compute(pairs)                          # auto-generates label-matching cost matrices
+distances = x_ted_batch_compute(pairs, num_threads=4)           # with multithreading
+distances = x_ted_batch_compute(pairs, cost_matrix=my_matrix)   # single matrix reused for all pairs
+distances = x_ted_batch_compute(pairs, cost_matrix=[m1, m2])    # per-pair cost matrices
+```
 
 ### From text (spaCy dependency parse trees)
 
