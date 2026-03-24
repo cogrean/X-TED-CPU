@@ -1,8 +1,8 @@
 # X-TED CPU
 
-A parallel CPU implementation of the Zhang-Shasha Tree Edit Distance (TED) algorithm, exposed as a Python package via pybind11. (Coming soon!!)
+A parallel CPU implementation of the Zhang-Shasha Tree Edit Distance (TED) algorithm, exposed as a Python package via pybind11.
 
-## Installation
+## Installation (coming soon)
 
 ```bash
 pip install xted-cpu
@@ -12,14 +12,14 @@ Or from source (requires a C++ compiler and CMake (version 3.23)):
 
 ```bash
 git clone https://github.com/cogrean/X-TED-CPU-.git
-cd X-TED-CPU-
+cd X-TED-CPU
 pip install .
 ```
 
 ## Usage
 
 ```python
-from xted_cpu import x_ted_compute
+from xted-cpu import x_ted_compute
 
 # Trees must be in DFS preorder. adj[i] = list of child indices for node i.
 #     a
@@ -36,6 +36,8 @@ labels2 = ['a', 'b']
 
 print(x_ted_compute(adj1, labels1, adj2, labels2))  # 1 (delete c)
 ```
+
+(Accepts Python lists and NumPy arrays)
 
 ### Custom cost matrix
 
@@ -56,7 +58,7 @@ TO CLARIFY: Passed-in matrices must have a distance of 0 for labels that are mat
 x_ted_compute(adj1, labels1, adj2, labels2, num_threads=4)
 ```
 
-(4 seems to be the optimal amount of threads for trees under ~500 nodes due to massively decreased synchronization overhead)
+(4 seems to be the optimal amount of threads for trees under ~500 nodes due to synchronization overhead)
 
 ### From text (spaCy dependency parse trees)
 
@@ -76,4 +78,4 @@ Nodes must be indexed in **DFS preorder** — the root is node 0, and each node'
 adj, label = x_ted_util_transfer(text, nlp (optional))
 ```
 
-Returns a Python List object. 
+Returns a Python List object.

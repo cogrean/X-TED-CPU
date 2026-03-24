@@ -63,22 +63,6 @@ jobs:
           name: wheels-macos-arm64
           path: wheelhouse/
 
-  build-macos-x86_64:
-    name: macOS x86_64 wheels
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pypa/cibuildwheel@v2.22
-        env:
-          CIBW_BUILD: cp39-macosx_x86_64 cp310-macosx_x86_64 cp311-macosx_x86_64 cp312-macosx_x86_64 cp313-macosx_x86_64
-          CIBW_BUILD_VERBOSITY: 1
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos-x86_64   
-          path: wheelhouse/
-
   build-windows:
     name: Windows x86_64 wheels
     runs-on: windows-latest
