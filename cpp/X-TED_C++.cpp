@@ -1,14 +1,9 @@
-#include <iostream>
 #include <vector>
-#include <time.h>
 #include <string>
-#include "fstream"
-#include "thread"
-#include "queue"
-#include "unordered_set"
-#include "set"
-#include <chrono>
+#include <thread>
 #include <functional>
+#include <barrier>
+#include <atomic>
 
 namespace xted
 {
@@ -93,7 +88,6 @@ namespace xted
             return key_roots_view;
         }
 
-        // branchless compilations (cmov) for x86, and standard implementation (2 comparisons) for non-x86
         inline int min3(int a, int b, int c)
         {
             int ab = a < b ? a : b;
@@ -104,26 +98,7 @@ namespace xted
 
     // forward declarations
     void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree);
-    vector<vector<int>> parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads);
-
-    // thread task
-    void task(vector<int> &worklist_1, int begin, int interval, int final, int L, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree)
-    {
-        int i = begin;
-        while (i < final)
-        {
-            int task = worklist_1[i];
-            worklist_1[i] = -1;
-
-            // computes one table (inlined the compute_one_table function call in original code to reduce overhead)
-            int row = task / L;
-            int column = task % L;
-            compute(row, column, x_orl, x_kr, y_orl, y_kr, Cost, D, D_tree);
-
-            // advances
-            i = i + interval;
-        }
-    }
+    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads);
 
     // computes table
     void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree)
@@ -194,9 +169,9 @@ namespace xted
         // D_tree: per-cell tree-to-tree distances, shared across threads (non-overlapping jobs)
         vector<vector<int>> D_tree(m, vector<int>(n, -1));
 
-        vector<vector<int>> result_matrix = parallel_CPU_compute(x_orl, x_kr, y_orl, y_kr, cost_matrix, D_tree, m, n, num_threads);
+        parallel_CPU_compute(x_orl, x_kr, y_orl, y_kr, cost_matrix, D_tree, m, n, num_threads);
 
-        return result_matrix[0][0];
+        return D_tree[0][0];
     }
 
     /*
@@ -221,9 +196,9 @@ namespace xted
 
         vector<vector<int>> D_tree(m, vector<int>(n, -1));
 
-        vector<vector<int>> result_matrix = parallel_CPU_compute(x_orl, x_kr, y_orl, y_kr, cost_matrix, D_tree, m, n, num_threads);
+        parallel_CPU_compute(x_orl, x_kr, y_orl, y_kr, cost_matrix, D_tree, m, n, num_threads);
 
-        return result_matrix[0][0];
+        return D_tree[0][0];
     }
 
     /*
@@ -237,7 +212,7 @@ namespace xted
     Returns:
         Full cost array with final TED value at D_tree[0][0]
     */
-    vector<vector<int>> parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads)
+    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads)
     {
         int K = (int)x_kr.size();
         int L = (int)y_kr.size();
@@ -308,72 +283,93 @@ namespace xted
 
         // Preprocessing ends
 
-        // TODO: add logging for time it takes to preprocess and compare against running times
-
-        vector<int> worklist1(K * L, -1);
-        vector<int> worklist2(K * L, -1);
-        int worklist1_tail = 0;
-        int worklist2_tail = 0;
-
-        // first filling of the worklist vector
-        int current_depth = 0;
+        // Bucket tasks by depth so we iterate each level in O(bucket size) not O(K*L)
+        int max_depth = 0;
         for (int i = 0; i < K * L; i++)
         {
-            if (depth[i] == current_depth)
-            {
-                worklist1[worklist1_tail++] = i;
-            }
+            if (depth[i] > max_depth)
+                max_depth = depth[i];
         }
 
-        int max = 0;
-        for (int i = 0; i < (int)depth.size(); i++)
+        vector<vector<int>> depth_buckets(max_depth + 1);
+        for (int i = 0; i < K * L; i++)
         {
-            if (max < depth[i])
-            {
-                max = depth[i];
-            }
+            depth_buckets[depth[i]].push_back(i);
         }
 
-        double total_time = 0;
-
-        while (worklist1_tail != 0)
+        // Single-threaded fast path: no threading overhead
+        if (num_th <= 1)
         {
-            auto start_time = std::chrono::steady_clock::now();
-
-            vector<thread> threads;
-
-            for (int inter = 0; inter < num_th; inter++)
+            for (int d = 0; d <= max_depth; d++)
             {
-                threads.push_back(thread(task, ref(worklist1), inter, num_th, (int)worklist1_tail, L, ref(x_orl), ref(x_kr), ref(y_orl), ref(y_kr), ref(Cost), ref(D_in_total[inter]), ref(D_tree)));
-            }
-
-            for (auto &th : threads)
-            {
-                th.join();
-            }
-
-            auto end_time = std::chrono::steady_clock::now();
-            auto ms = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-            total_time += static_cast<double>(ms / 1000.0);
-
-            // update current depth and refill worklist
-            current_depth++;
-            for (int i = 0; i < K * L; i++)
-            {
-                if (depth[i] == current_depth)
+                for (int t : depth_buckets[d])
                 {
-                    worklist2[worklist2_tail++] = i;
+                    compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[0], D_tree);
                 }
             }
-
-            swap(worklist1, worklist2);
-            worklist1_tail = worklist2_tail;
-            worklist2_tail = 0;
+            return;
         }
 
-        std::cout << "Total Time for Parallel Computing = " << total_time << " ms" << std::endl;
-        vector<vector<int>> final_result = D_tree;
-        return final_result;
+        // Multi-threaded: thread pool with std::barrier
+        // Shared state between main thread and workers
+        vector<int> *worklist_ptr = nullptr;
+        int worklist_size = 0;
+        std::atomic<bool> done{false};
+
+        // Two barriers: one to start work, one to finish work
+        std::barrier start_barrier(num_th + 1);
+        std::barrier end_barrier(num_th + 1);
+
+        // Worker lambda — each thread loops until done, processing strided slices of the worklist
+        auto worker = [&](int thread_id)
+        {
+            while (true)
+            {
+                start_barrier.arrive_and_wait();
+
+                if (done.load(std::memory_order_relaxed))
+                    return;
+
+                vector<int> &wl = *worklist_ptr;
+                for (int i = thread_id; i < worklist_size; i += num_th)
+                {
+                    int t = wl[i];
+                    compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[thread_id], D_tree);
+                }
+
+                end_barrier.arrive_and_wait();
+            }
+        };
+
+        // Spawn threads once
+        vector<thread> threads;
+        threads.reserve(num_th);
+        for (int i = 0; i < num_th; i++)
+        {
+            threads.emplace_back(worker, i);
+        }
+
+        // Drive computation level by level
+        for (int d = 0; d <= max_depth; d++)
+        {
+            if (depth_buckets[d].empty())
+                continue;
+
+            worklist_ptr = &depth_buckets[d];
+            worklist_size = (int)depth_buckets[d].size();
+
+            start_barrier.arrive_and_wait(); // release workers
+            end_barrier.arrive_and_wait();   // wait for workers to finish
+        }
+
+        // Signal workers to exit
+        done.store(true, std::memory_order_relaxed);
+        start_barrier.arrive_and_wait();
+
+        for (auto &th : threads)
+        {
+            th.join();
+        }
     }
 
 }
