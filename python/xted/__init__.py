@@ -1,10 +1,12 @@
 from . import XTED_CPU
-import spacy
-import numpy
 
 
 def _to_list(x):
     """Convert numpy arrays to nested Python lists; pass through regular lists unchanged."""
+    try:
+        import numpy
+    except ImportError:
+        return x
     if isinstance(x, numpy.ndarray):
         return x.tolist()
     return x
@@ -40,6 +42,7 @@ def x_ted_compute(parent_1, label_1, parent_2, label_2, cost_matrix=None, num_th
 def x_ted_util_transfer(text, nlp=None):
     # default NLP usage
     if nlp is None:
+        import spacy
         nlp = spacy.load("en_core_web_sm")
 
     doc = nlp(text)

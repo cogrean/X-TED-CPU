@@ -6,6 +6,7 @@ build-backend = "scikit_build_core.build"
 name = "x-ted"
 version = "0.1.0"
 requires-python = ">=3.8"
+dependencies = ["numpy>=1.21", "spacy>=3.0"]
 
 [tool.scikit-build]
 wheel.packages = ["python/xted"]

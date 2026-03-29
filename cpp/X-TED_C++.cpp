@@ -1,7 +1,6 @@
 #include <vector>
 #include <string>
 #include <thread>
-#include <functional>
 #include <barrier>
 #include <atomic>
 
@@ -156,12 +155,12 @@ namespace xted
     {
 
         // outer-most leaf arrays
-        vector<int> x_orl = right_leaf_preprocessing(ref(parent1));
-        vector<int> y_orl = right_leaf_preprocessing(ref(parent2));
+        vector<int> x_orl = right_leaf_preprocessing(parent1);
+        vector<int> y_orl = right_leaf_preprocessing(parent2);
 
         // keyroot tree arrays
-        vector<int> x_kr = key_roots(ref(x_orl));
-        vector<int> y_kr = key_roots(ref(y_orl));
+        vector<int> x_kr = key_roots(x_orl);
+        vector<int> y_kr = key_roots(y_orl);
 
         int m = (int)label1.size();
         int n = (int)label2.size();
@@ -180,11 +179,11 @@ namespace xted
     */
     int XTED_CPU_uniform(vector<string> label1, vector<vector<int>> parent1, vector<string> label2, vector<vector<int>> parent2, int num_threads)
     {
-        vector<int> x_orl = right_leaf_preprocessing(ref(parent1));
-        vector<int> y_orl = right_leaf_preprocessing(ref(parent2));
+        vector<int> x_orl = right_leaf_preprocessing(parent1);
+        vector<int> y_orl = right_leaf_preprocessing(parent2);
 
-        vector<int> x_kr = key_roots(ref(x_orl));
-        vector<int> y_kr = key_roots(ref(y_orl));
+        vector<int> x_kr = key_roots(x_orl);
+        vector<int> y_kr = key_roots(y_orl);
 
         int m = (int)label1.size();
         int n = (int)label2.size();
@@ -220,10 +219,10 @@ namespace xted
         // creates num_th amount of D trees for threads to work within
         int num_th = num_threads;
         vector<vector<vector<int>>> D_in_total;
+        D_in_total.reserve(num_th);
         for (int i = 0; i < num_th; i++)
         {
-            vector<vector<int>> D_new(m + 1, vector<int>(n + 1, -1));
-            D_in_total.push_back(D_new);
+            D_in_total.emplace_back(m + 1, vector<int>(n + 1, -1));
         }
 
         vector<int> depth(K * L, 0);
