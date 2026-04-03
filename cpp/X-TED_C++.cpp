@@ -179,20 +179,25 @@ namespace xted
     */
     int XTED_CPU_uniform(vector<string> label1, vector<vector<int>> parent1, vector<string> label2, vector<vector<int>> parent2, int num_threads)
     {
+        // vectors that contain the right-most accessible node from each other node
         vector<int> x_orl = right_leaf_preprocessing(parent1);
         vector<int> y_orl = right_leaf_preprocessing(parent2);
 
+        // key root vectors from both of the right-most node vectors, to be used for pre-computation
         vector<int> x_kr = key_roots(x_orl);
         vector<int> y_kr = key_roots(y_orl);
 
+        // sizes of original trees
         int m = (int)label1.size();
         int n = (int)label2.size();
 
+        // cost matrix calculation (0 for matching labels, 1 otherwise)
         vector<vector<int>> cost_matrix(m, vector<int>(n));
         for (int i = 0; i < m; ++i)
             for (int j = 0; j < n; ++j)
                 cost_matrix[i][j] = (label1[i] == label2[j]) ? 0 : 1;
 
+        // D_tree: per-cell tree-to-tree distances, shared across threads (non-overlapping jobs)
         vector<vector<int>> D_tree(m, vector<int>(n, -1));
 
         parallel_CPU_compute(x_orl, x_kr, y_orl, y_kr, cost_matrix, D_tree, m, n, num_threads);
@@ -213,6 +218,7 @@ namespace xted
     */
     void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads)
     {
+        // keyroot sizes
         int K = (int)x_kr.size();
         int L = (int)y_kr.size();
 
