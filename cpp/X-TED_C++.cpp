@@ -14,8 +14,27 @@ namespace xted
     namespace
     {
         /*
+        Converts a flat parent-index array into an adjacency list.
+        parent[i] is the parent of node i (-1 for root).
+        Returns: adj where adj[i] == {1D vector of children of node i}
+        */
+        vector<vector<int>> parent_to_adj(const vector<int> &parent)
+        {
+            int m = (int)parent.size();
+            vector<vector<int>> adj(m);
+            for (int i = 0; i < m; i++)
+            {
+                if (parent[i] >= 0)
+                {
+                    adj[parent[i]].push_back(i);
+                }
+            }
+            return adj;
+        }
+
+        /*
         Params:
-            adj: pointer to 2D vector where adj[i] == {1D vector of children of tree[i]}
+            adj: 2D vector where adj[i] == {1D vector of children of tree[i]}
         Returns: vector containing the right-most leaf possible of accessing from each node[i]
         */
         vector<int> right_leaf_preprocessing(vector<vector<int>> &adj)
@@ -151,12 +170,15 @@ namespace xted
     entrypoint for x_ted_compute from Dayi's proposal. Prepocesses and prepares trees for parallel XTED_CPU computation
     Returns: returns the final distance
     */
-    int XTED_CPU(vector<string> label1, vector<vector<int>> parent1, vector<string> label2, vector<vector<int>> parent2, vector<vector<int>> cost_matrix, int num_threads)
+    int XTED_CPU(vector<string> label1, vector<int> parent1, vector<string> label2, vector<int> parent2, vector<vector<int>> cost_matrix, int num_threads)
     {
+        // convert flat parent arrays to adjacency lists
+        vector<vector<int>> adj1 = parent_to_adj(parent1);
+        vector<vector<int>> adj2 = parent_to_adj(parent2);
 
         // outer-most leaf arrays
-        vector<int> x_orl = right_leaf_preprocessing(parent1);
-        vector<int> y_orl = right_leaf_preprocessing(parent2);
+        vector<int> x_orl = right_leaf_preprocessing(adj1);
+        vector<int> y_orl = right_leaf_preprocessing(adj2);
 
         // keyroot tree arrays
         vector<int> x_kr = key_roots(x_orl);
@@ -177,11 +199,15 @@ namespace xted
     Uniform-cost variant: costs 0 for matching labels, 1 otherwise. Builds the cost
     matrix internally so no Python-side construction or pybind11 STL conversion is needed.
     */
-    int XTED_CPU_uniform(vector<string> label1, vector<vector<int>> parent1, vector<string> label2, vector<vector<int>> parent2, int num_threads)
+    int XTED_CPU_uniform(vector<string> label1, vector<int> parent1, vector<string> label2, vector<int> parent2, int num_threads)
     {
+        // convert flat parent arrays to adjacency lists
+        vector<vector<int>> adj1 = parent_to_adj(parent1);
+        vector<vector<int>> adj2 = parent_to_adj(parent2);
+
         // vectors that contain the right-most accessible node from each other node
-        vector<int> x_orl = right_leaf_preprocessing(parent1);
-        vector<int> y_orl = right_leaf_preprocessing(parent2);
+        vector<int> x_orl = right_leaf_preprocessing(adj1);
+        vector<int> y_orl = right_leaf_preprocessing(adj2);
 
         // key root vectors from both of the right-most node vectors, to be used for pre-computation
         vector<int> x_kr = key_roots(x_orl);
