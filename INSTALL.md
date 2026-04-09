@@ -8,9 +8,9 @@ pip install x-ted
 
 Precompiled wheels are available for the following platforms:
 
-Linux x86_64 & ARM64 w/ Python 3.9 - 3.13
-macOS ARM64 (Apple Silicon) w/ Python 3.9 - 3.13
-Windows x86_64 w/ Python 3.9 - 3.13
+Linux x86_64 & ARM64 w/ Python 3.9 - 3.12
+macOS ARM64 (Apple Silicon) w/ Python 3.9 - 3.12
+Windows x86_64 w/ Python 3.9 - 3.12
 
 ## From source
 
