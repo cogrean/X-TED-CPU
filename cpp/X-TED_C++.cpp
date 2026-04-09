@@ -115,11 +115,11 @@ namespace xted
     }
 
     // forward declarations
-    void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree);
-    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads);
+    void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, const vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree);
+    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, const vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads);
 
     // computes table
-    void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree)
+    void compute(int k, int l, vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, const vector<vector<int>> &Cost, vector<vector<int>> &D, vector<vector<int>> &D_tree)
     {
         int i;
         int j;
@@ -170,7 +170,7 @@ namespace xted
     entrypoint for x_ted_compute from Dayi's proposal. Prepocesses and prepares trees for parallel XTED_CPU computation
     Returns: returns the final distance
     */
-    int XTED_CPU(vector<string> label1, vector<int> parent1, vector<string> label2, vector<int> parent2, vector<vector<int>> cost_matrix, int num_threads)
+    int XTED_CPU(const vector<string>& label1, const vector<int>& parent1, const vector<string>& label2, const vector<int>& parent2, const vector<vector<int>>& cost_matrix, int num_threads)
     {
         // convert flat parent arrays to adjacency lists
         vector<vector<int>> adj1 = parent_to_adj(parent1);
@@ -199,7 +199,7 @@ namespace xted
     Uniform-cost variant: costs 0 for matching labels, 1 otherwise. Builds the cost
     matrix internally so no Python-side construction or pybind11 STL conversion is needed.
     */
-    int XTED_CPU_uniform(vector<string> label1, vector<int> parent1, vector<string> label2, vector<int> parent2, int num_threads)
+    int XTED_CPU_uniform(const vector<string>& label1, const vector<int>& parent1, const vector<string>& label2, const vector<int>& parent2, int num_threads)
     {
         // convert flat parent arrays to adjacency lists
         vector<vector<int>> adj1 = parent_to_adj(parent1);
@@ -242,7 +242,7 @@ namespace xted
     Returns:
         Full cost array with final TED value at D_tree[0][0]
     */
-    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads)
+    void parallel_CPU_compute(vector<int> &x_orl, vector<int> &x_kr, vector<int> &y_orl, vector<int> &y_kr, const vector<vector<int>> &Cost, vector<vector<int>> &D_tree, int m, int n, int num_threads)
     {
         // keyroot sizes
         int K = (int)x_kr.size();
@@ -385,6 +385,16 @@ namespace xted
         {
             if (depth_buckets[d].empty())
                 continue;
+
+            // Small buckets: run inline on main thread to avoid barrier overhead
+            if ((int)depth_buckets[d].size() <= 3)
+            {
+                for (int t : depth_buckets[d])
+                {
+                    compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[0], D_tree);
+                }
+                continue;
+            }
 
             worklist_ptr = &depth_buckets[d];
             worklist_size = (int)depth_buckets[d].size();

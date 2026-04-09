@@ -1,5 +1,5 @@
 CXX      := c++
-CXXFLAGS := -std=c++17 -O2 -pthread -Wall -Wextra
+CXXFLAGS := -std=c++20 -O2 -pthread -Wall -Wextra
 TARGET   := test_xted
 SRC      := test_xted.cpp
 

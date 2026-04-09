@@ -62,6 +62,17 @@ struct SuppressStdout {
     ~SuppressStdout() { cout.rdbuf(orig); }
 };
 
+// Convert adjacency list to flat parent-index array.
+// adj[i] = vector of children of node i; root (node 0) has parent -1.
+static vector<int> adj_to_parent(const vector<vector<int>>& adj) {
+    int n = (int)adj.size();
+    vector<int> parent(n, -1);
+    for (int i = 0; i < n; ++i)
+        for (int c : adj[i])
+            parent[c] = i;
+    return parent;
+}
+
 static double vec_median(vector<double> v) {
     std::sort(v.begin(), v.end());
     return v[v.size() / 2];
@@ -150,7 +161,7 @@ timed_xted(const vector<string>& l1, const vector<vector<int>>& a1,
 {
     SuppressStdout s;
     auto t0  = std::chrono::steady_clock::now();
-    int  ted = xted::XTED_CPU(l1, a1, l2, a2, cost, threads);
+    int  ted = xted::XTED_CPU(l1, adj_to_parent(a1), l2, adj_to_parent(a2), cost, threads);
     auto t1  = std::chrono::steady_clock::now();
     double ms = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() / 1000.0;
     return {ted, ms};
