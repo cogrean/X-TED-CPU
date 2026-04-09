@@ -18,7 +18,7 @@ Building from source requires:
 
 - A C++20-compatible compiler (GCC 11+, Clang 14+, MSVC 2022+)
 - CMake 3.23+
-- Python 3.9+
+- Python 3.9-3.12
 
 ```bash
 git clone https://github.com/cogrean/X-TED-CPU.git
