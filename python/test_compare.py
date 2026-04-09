@@ -33,34 +33,38 @@ def label_cost_matrix(labels1, labels2):
             for i in range(len(labels1))]
 
 
-def xted_label(adj1, labels1, adj2, labels2, num_threads=1):
+def xted_label(parent1, labels1, parent2, labels2, num_threads=1):
     """XTED_CPU with label-matching cost (comparable to ref and zss_unit)."""
-    return x_ted_compute(adj1, labels1, adj2, labels2,
+    return x_ted_compute(parent1, labels1, parent2, labels2,
                          cost_matrix=label_cost_matrix(labels1, labels2),
                          num_threads=num_threads)
 
 
-def xted_u(adj1, labels1, adj2, labels2, num_threads=1):
+def xted_u(parent1, labels1, parent2, labels2, num_threads=1):
     """XTED_CPU with default all-1s cost."""
-    return x_ted_compute(adj1, labels1, adj2, labels2, num_threads=num_threads)
+    return x_ted_compute(parent1, labels1, parent2, labels2, num_threads=num_threads)
 
 
-def ref(adj1, labels1, adj2, labels2, num_threads=1):
+def ref(parent1, labels1, parent2, labels2, num_threads=1):
     """Reference Zhang-Shasha with label-matching cost."""
-    return TEST_XTED_REF.compute(labels1, adj1, labels2, adj2, num_threads)
+    return TEST_XTED_REF.compute(labels1, parent1, labels2, parent2, num_threads)
 
 
-def _build_zss(adj, labels, i=0):
-    node = zss.Node(labels[i])
-    for child in adj[i]:
-        node.addkid(_build_zss(adj, labels, child))
-    return node
+def _build_zss(parent, labels):
+    nodes = [zss.Node(labels[i]) for i in range(len(labels))]
+    root = None
+    for i, p in enumerate(parent):
+        if p == -1:
+            root = nodes[i]
+        else:
+            nodes[p].addkid(nodes[i])
+    return root
 
 
-def zss_unit(adj1, labels1, adj2, labels2):
+def zss_unit(parent1, labels1, parent2, labels2):
     """ZSS with unit costs: insert=1, delete=1, rename=0 if same label, 1 otherwise."""
-    a = _build_zss(adj1, labels1)
-    b = _build_zss(adj2, labels2)
+    a = _build_zss(parent1, labels1)
+    b = _build_zss(parent2, labels2)
     return int(zss.distance(
         a, b,
         get_children=zss.Node.get_children,
@@ -75,46 +79,57 @@ def zss_unit(adj1, labels1, adj2, labels2):
 DATASET_ROOT = os.path.join(os.path.dirname(__file__), "..", "Sampled_Dataset")
 
 
+def _adj_to_parent(adj):
+    """Convert an adjacency list to a flat parent-index array."""
+    parent = [-1] * len(adj)
+    for i, children in enumerate(adj):
+        for c in children:
+            parent[c] = i
+    return parent
+
+
 def load_trees(nodes_file, adj_file):
     with open(nodes_file) as f:
         labels = [line.split() for line in f if line.strip()]
     with open(adj_file) as f:
         adjs = [ast.literal_eval(line.strip()) for line in f if line.strip()]
     assert len(labels) == len(adjs)
-    return adjs, labels
+    parents = [_adj_to_parent(adj) for adj in adjs]
+    return parents, labels
 
 
-# ── Test fixtures (DFS preorder indexed) ──────────────────────────────────────
+# ── Test fixtures (DFS preorder indexed, flat parent arrays) ─────────────────
+# parent[i] = index of node i's parent, -1 for root
 
 # fmt: off
-SINGLE_A    = ([[]], ['a'])
-SINGLE_B    = ([[]], ['b'])
-SINGLE_X    = ([[]], ['x'])
+SINGLE_A    = ([-1], ['a'])
+SINGLE_B    = ([-1], ['b'])
+SINGLE_X    = ([-1], ['x'])
 
 # a -> b -> c
-CHAIN_3     = ([[1], [2], []], ['a', 'b', 'c'])
+CHAIN_3     = ([-1, 0, 1], ['a', 'b', 'c'])
 # a -> b
-CHAIN_2     = ([[1], []], ['a', 'b'])
+CHAIN_2     = ([-1, 0], ['a', 'b'])
 
 # a -> (b, c)
-STAR_ABC    = ([[1, 2], [], []], ['a', 'b', 'c'])
+STAR_ABC    = ([-1, 0, 0], ['a', 'b', 'c'])
 # a -> (b, d)  — one label differs
-STAR_ABD    = ([[1, 2], [], []], ['a', 'b', 'd'])
+STAR_ABD    = ([-1, 0, 0], ['a', 'b', 'd'])
 # x -> (y, z)  — all labels differ from STAR_ABC
-STAR_XYZ    = ([[1, 2], [], []], ['x', 'y', 'z'])
+STAR_XYZ    = ([-1, 0, 0], ['x', 'y', 'z'])
 
 #   a
 #  / \
 # b   e        depth-2 tree, 5 nodes
 # |\
 # c d
-DEEP        = ([[1, 4], [2, 3], [], [], []], ['a', 'b', 'c', 'd', 'e'])
+DEEP        = ([-1, 0, 1, 1, 0], ['a', 'b', 'c', 'd', 'e'])
 # Same structure, entirely different labels
-DEEP_PRIME  = ([[1, 4], [2, 3], [], [], []], ['x', 'y', 'z', 'w', 'v'])
+DEEP_PRIME  = ([-1, 0, 1, 1, 0], ['x', 'y', 'z', 'w', 'v'])
 
 # a -> (b -> c, d)  vs  a -> (b, d -> e)
-ASYM_1      = ([[1, 3], [2], [], []], ['a', 'b', 'c', 'd'])
-ASYM_2      = ([[1, 2], [], [3], []], ['a', 'b', 'd', 'e'])
+ASYM_1      = ([-1, 0, 1, 0], ['a', 'b', 'c', 'd'])
+ASYM_2      = ([-1, 0, 0, 2], ['a', 'b', 'd', 'e'])
 # fmt: on
 
 ALL_PAIRS = [
@@ -247,21 +262,21 @@ class TestBolzanoDataset:
     # First 10 pairs against the reference implementation
     @pytest.mark.parametrize("i,j", [(i, j) for i in range(5) for j in range(i+1, 5)])
     def test_xted_vs_ref(self, bolzano, i, j):
-        adjs, labels = bolzano
-        assert xted_label(adjs[i], labels[i], adjs[j], labels[j]) == \
-               ref(adjs[i], labels[i], adjs[j], labels[j])
+        parents, labels = bolzano
+        assert xted_label(parents[i], labels[i], parents[j], labels[j]) == \
+               ref(parents[i], labels[i], parents[j], labels[j])
 
     @pytest.mark.parametrize("i,j", [(i, j) for i in range(5) for j in range(i+1, 5)])
     def test_xted_vs_zss(self, bolzano, i, j):
-        adjs, labels = bolzano
-        assert xted_label(adjs[i], labels[i], adjs[j], labels[j]) == \
-               zss_unit(adjs[i], labels[i], adjs[j], labels[j])
+        parents, labels = bolzano
+        assert xted_label(parents[i], labels[i], parents[j], labels[j]) == \
+               zss_unit(parents[i], labels[i], parents[j], labels[j])
 
     def test_self_distance_zero(self, bolzano):
-        adjs, labels = bolzano
+        parents, labels = bolzano
         for i in range(10):
-            assert xted_label(adjs[i], labels[i], adjs[i], labels[i]) == 0
-            assert ref(adjs[i], labels[i], adjs[i], labels[i]) == 0
+            assert xted_label(parents[i], labels[i], parents[i], labels[i]) == 0
+            assert ref(parents[i], labels[i], parents[i], labels[i]) == 0
 
 
 # ── Section 7: Swissport-100 verified values (label-matching cost) ─────────────
@@ -275,21 +290,21 @@ def swissport_100():
 
 class TestSwissport100:
     def test_pair_0_1_xted(self, swissport_100):
-        adjs, labels = swissport_100
-        assert xted_label(adjs[0], labels[0], adjs[1], labels[1]) == 44
+        parents, labels = swissport_100
+        assert xted_label(parents[0], labels[0], parents[1], labels[1]) == 44
 
     def test_pair_0_1_ref(self, swissport_100):
-        adjs, labels = swissport_100
-        assert ref(adjs[0], labels[0], adjs[1], labels[1]) == 44
+        parents, labels = swissport_100
+        assert ref(parents[0], labels[0], parents[1], labels[1]) == 44
 
     def test_pair_0_1_zss(self, swissport_100):
-        adjs, labels = swissport_100
-        assert zss_unit(adjs[0], labels[0], adjs[1], labels[1]) == 44
+        parents, labels = swissport_100
+        assert zss_unit(parents[0], labels[0], parents[1], labels[1]) == 44
 
     def test_pair_0_1_all_implementations_agree(self, swissport_100):
-        adjs, labels = swissport_100
-        a = adjs[0]; la = labels[0]
-        b = adjs[1]; lb = labels[1]
+        parents, labels = swissport_100
+        a = parents[0]; la = labels[0]
+        b = parents[1]; lb = labels[1]
         xted_val = xted_label(a, la, b, lb)
         assert ref(a, la, b, lb)      == xted_val
         assert zss_unit(a, la, b, lb) == xted_val
@@ -347,9 +362,9 @@ class TestTiming:
         assert len({r[1] for r in rows}) == 1, "All impls must agree on TED"
 
     def test_timing_bolzano(self, bolzano):
-        adjs, labels = bolzano
-        a_adj, a_lab = adjs[0], labels[0]
-        b_adj, b_lab = adjs[1], labels[1]
+        parents, labels = bolzano
+        a_adj, a_lab = parents[0], labels[0]
+        b_adj, b_lab = parents[1], labels[1]
         cost = label_cost_matrix(a_lab, b_lab)
         rows = [
             ("xted_uniform", *_timed(x_ted_compute, a_adj, a_lab, b_adj, b_lab)),
@@ -361,9 +376,9 @@ class TestTiming:
         assert len({r[1] for r in rows}) == 1, "All impls must agree on TED"
 
     def test_timing_swissport_100(self, swissport_100):
-        adjs, labels = swissport_100
-        a_adj, a_lab = adjs[0], labels[0]
-        b_adj, b_lab = adjs[1], labels[1]
+        parents, labels = swissport_100
+        a_adj, a_lab = parents[0], labels[0]
+        b_adj, b_lab = parents[1], labels[1]
         cost = label_cost_matrix(a_lab, b_lab)
         rows = [
             ("xted_uniform", *_timed(x_ted_compute, a_adj, a_lab, b_adj, b_lab)),
@@ -375,9 +390,9 @@ class TestTiming:
         assert len({r[1] for r in rows}) == 1, "All impls must agree on TED"
 
     def test_timing_swissport_500(self, swissport_500):
-        adjs, labels = swissport_500
-        a_adj, a_lab = adjs[0], labels[0]
-        b_adj, b_lab = adjs[1], labels[1]
+        parents, labels = swissport_500
+        a_adj, a_lab = parents[0], labels[0]
+        b_adj, b_lab = parents[1], labels[1]
         cost = label_cost_matrix(a_lab, b_lab)
         rows = [
             ("xted_uniform", *_timed(x_ted_compute, a_adj, a_lab, b_adj, b_lab)),

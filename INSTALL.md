@@ -39,11 +39,11 @@ Installed automatically with the package:
 ```python
 from xted import x_ted_compute
 
-adj1    = [[1, 2], [], []]
+parent1 = [-1, 0, 0]
 labels1 = ['a', 'b', 'c']
 
-adj2    = [[1], []]
+parent2 = [-1, 0]
 labels2 = ['a', 'b']
 
-print(x_ted_compute(adj1, labels1, adj2, labels2))  # 1
+print(x_ted_compute(parent1, labels1, parent2, labels2))  # 1
 ```
