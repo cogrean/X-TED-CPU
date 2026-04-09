@@ -1,4 +1,4 @@
-from xted import x_ted_compute, x_ted_compute_from_text
+from xted import x_ted_compute, x_ted_compute_from_text, x_ted_batch_compute
 import zss
 import spacy
 import ast
@@ -150,3 +150,47 @@ for name, nodes_path, adj_path in datasets_500:
     p1, l1 = load_dataset(nodes_path, adj_path, tree_idx=0)
     p2, l2 = load_dataset(nodes_path, adj_path, tree_idx=1)
     compare(f"{name}  (tree 0 vs 1, {len(l1)} vs {len(l2)} nodes)", p1, l1, p2, l2)
+
+
+# ---------------------------------------------------------------------------
+# 5. Batch processing
+# ---------------------------------------------------------------------------
+print("=" * 60)
+print("Batch processing (x_ted_batch_compute)")
+print("=" * 60)
+
+# Build batch of all 100-node pairs
+batch_pairs = []
+batch_names = []
+for name, nodes_path, adj_path in datasets_100:
+    p1, l1 = load_dataset(nodes_path, adj_path, tree_idx=0)
+    p2, l2 = load_dataset(nodes_path, adj_path, tree_idx=1)
+    batch_pairs.append((p1, l1, p2, l2))
+    batch_names.append(name)
+
+# Batch compute
+t0 = time.perf_counter()
+batch_results = x_ted_batch_compute(batch_pairs)
+t1 = time.perf_counter()
+batch_ms = (t1 - t0) * 1000
+
+# Individual compute for comparison
+t0 = time.perf_counter()
+individual_results = [x_ted_compute(p, l, p2, l2) for p, l, p2, l2 in batch_pairs]
+t1 = time.perf_counter()
+individual_ms = (t1 - t0) * 1000
+
+print(f"  {'Pair':<20} {'Batch':>8} {'Individual':>12} {'Match':>8}")
+print(f"  {'-'*50}")
+all_match = True
+for name, br, ir in zip(batch_names, batch_results, individual_results):
+    match = "OK" if br == ir else "MISMATCH"
+    if br != ir:
+        all_match = False
+    print(f"  {name:<20} {br:>8} {ir:>12} {match:>8}")
+
+print()
+print(f"  Batch total:      {batch_ms:>10.3f} ms")
+print(f"  Individual total: {individual_ms:>10.3f} ms")
+print(f"  All results match: {all_match}")
+print()

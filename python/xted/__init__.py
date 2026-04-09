@@ -168,7 +168,7 @@ def x_ted_batch_compute(tree_pairs, cost_matrix=None, num_threads=1):
         parent1, labels1, parent2, labels2 = pair
 
         if cost_matrix is None:
-            cm = _default_cost_matrix(labels1, labels2)
+            cm = None
         elif isinstance(cost_matrix, list) and len(cost_matrix) > 0 and isinstance(cost_matrix[0], list) and not isinstance(cost_matrix[0][0], list):
             cm = cost_matrix
         else:
