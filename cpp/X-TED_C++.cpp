@@ -1,8 +1,6 @@
 #include <vector>
 #include <string>
 #include <thread>
-#include <barrier>
-#include <atomic>
 
 namespace xted
 {
@@ -341,75 +339,42 @@ namespace xted
             return;
         }
 
-        // Multi-threaded: thread pool with std::barrier
-        // Shared state between main thread and workers
-        vector<int> *worklist_ptr = nullptr;
-        int worklist_size = 0;
-        std::atomic<bool> done{false};
-
-        // Two barriers: one to start work, one to finish work
-        std::barrier start_barrier(num_th + 1);
-        std::barrier end_barrier(num_th + 1);
-
-        // Worker lambda — each thread loops until done, processing strided slices of the worklist
-        auto worker = [&](int thread_id)
-        {
-            while (true)
-            {
-                start_barrier.arrive_and_wait();
-
-                if (done.load(std::memory_order_relaxed))
-                    return;
-
-                vector<int> &wl = *worklist_ptr;
-                for (int i = thread_id; i < worklist_size; i += num_th)
-                {
-                    int t = wl[i];
-                    compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[thread_id], D_tree);
-                }
-
-                end_barrier.arrive_and_wait();
-            }
-        };
-
-        // Spawn threads once
-        vector<thread> threads;
-        threads.reserve(num_th);
-        for (int i = 0; i < num_th; i++)
-        {
-            threads.emplace_back(worker, i);
-        }
-
-        // Drive computation level by level
+        // Multi-threaded: spawn and join threads per depth level
         for (int d = 0; d <= max_depth; d++)
         {
             if (depth_buckets[d].empty())
                 continue;
 
-            // Small buckets: run inline on main thread to avoid barrier overhead
-            if ((int)depth_buckets[d].size() <= 3)
+            vector<int> &bucket = depth_buckets[d];
+            int bucket_size = (int)bucket.size();
+
+            // Small buckets: run inline on main thread to avoid thread-spawn overhead
+            if (bucket_size <= 3)
             {
-                for (int t : depth_buckets[d])
+                for (int t : bucket)
                 {
                     compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[0], D_tree);
                 }
                 continue;
             }
 
-            worklist_ptr = &depth_buckets[d];
-            worklist_size = (int)depth_buckets[d].size();
-
-            start_barrier.arrive_and_wait(); // release workers
-            end_barrier.arrive_and_wait();   // wait for workers to finish
-        }
-
-        // Signal workers to exit
-        done.store(true, std::memory_order_relaxed);
-        start_barrier.arrive_and_wait();
-
-        for (auto &th : threads)
-        {
-            th.join();
+            vector<thread> threads;
+            threads.reserve(num_th);
+            for (int tid = 0; tid < num_th; tid++)
+            {
+                threads.emplace_back([&, tid]()
+                {
+                    for (int i = tid; i < bucket_size; i += num_th)
+                    {
+                        int t = bucket[i];
+                        compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[tid], D_tree);
+                    }
+                });
+            }
+            for (auto &th : threads)
+            {
+                th.join();
+            }
         }
     }
 
