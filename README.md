@@ -50,15 +50,11 @@ cost = [[0, 2],
 x_ted_compute(parent1, labels1, parent2, labels2, cost_matrix=cost)
 ```
 
-TO CLARIFY: Passed-in cost matrices must have a distance of 0 for labels that are matching.
-
 ### Multithreading
 
 ```python
 x_ted_compute(parent1, labels1, parent2, labels2, num_threads=4)
 ```
-
-(4 seems to be the optimal amount of threads for trees under ~500 nodes due to synchronization overhead)
 
 ### Batch computation
 
@@ -83,8 +79,7 @@ from xted import x_ted_compute_from_text
 
 distance = x_ted_compute_from_text("The cat sat.", "A dog ran.")
 ```
-
-Requires `spacy` and the `en_core_web_sm` model (`python -m spacy download en_core_web_sm`).
+(Default natural language processor is "en_core_web_sm")
 
 ## Tree format
 
