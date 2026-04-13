@@ -6,14 +6,16 @@ build-backend = "scikit_build_core.build"
 name = "x-ted"
 version = "0.1.0"
 requires-python = ">=3.8, <3.13"
+license = "MIT"
 dependencies = [
     "numpy>=1.21",
-    "spacy>=3.7.0,<3.8.0",
-    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
 ]
 
 [project.optional-dependencies]
-nlp = ["spacy>=3.0"]
+nlp = [
+    "spacy>=3.7.0,<4.0",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl",
+]
 
 [tool.scikit-build]
 wheel.packages = ["python/xted"]

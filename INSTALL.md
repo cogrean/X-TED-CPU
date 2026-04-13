@@ -31,8 +31,16 @@ pip install .
 Installed automatically with the package:
 
 - **numpy** >= 1.21
-- **spacy** >= 3.7.0, < 3.8.0
-- **en-core-web-sm** 3.7.1 (spaCy English language model)
+
+### Optional: NLP support (spaCy)
+
+For `x_ted_compute_from_text` and `x_ted_util_transfer`, install with the `nlp` extra:
+
+```bash
+pip install x-ted[nlp]
+```
+
+This adds **spaCy** and the **en_core_web_sm** English language model.
 
 ## Verifying the installation
 

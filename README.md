@@ -76,6 +76,8 @@ distances = x_ted_batch_compute(pairs, cost_matrix=[m1, m2])    # per-pair cost 
 
 ### From text (spaCy dependency parse trees)
 
+Requires the `nlp` extra: `pip install x-ted[nlp]`
+
 ```python
 from xted import x_ted_compute_from_text
 
