@@ -46,6 +46,13 @@ pip install x-ted[nlp]
 python -m spacy download en_core_web_sm
 ```
 
+Or from source:
+
+```bash
+pip install .[nlp]
+python -m spacy download en_core_web_sm
+```
+
 The `spacy download` step is required separately because spaCy language models are not standard PyPI packages. The default model is `en_core_web_sm`, but any spaCy model can be passed via the `nlp` parameter.
 
 ## Verifying the installation
