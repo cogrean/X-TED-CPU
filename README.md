@@ -11,7 +11,7 @@ pip install x-ted
 Or from source (requires a C++ compiler and CMake (version 3.23)):
 
 ```bash
-git clone https://github.com/cogrean/X-TED-CPU-.git
+git clone https://github.com/cogrean/X-TED-CPU.git
 cd X-TED-CPU
 pip install .
 ```
