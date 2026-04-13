@@ -74,24 +74,52 @@ distances = x_ted_batch_compute(pairs, cost_matrix=my_matrix)   # single matrix 
 distances = x_ted_batch_compute(pairs, cost_matrix=[m1, m2])    # per-pair cost matrices
 ```
 
-### From text (spaCy dependency parse trees)
+## Tree format
 
-Requires the `nlp` extra: `pip install x-ted[nlp]`
+Nodes must be indexed in **DFS preorder** — the root is node 0 (with `parent[0] = -1`), and each node's subtree occupies a contiguous index range.
+
+## Optional: NLP support
+
+The core package (`pip install x-ted`) has no dependency on spaCy and works entirely with tree arrays. The optional `nlp` extra adds two convenience functions that automatically convert raw text into tree representations using spaCy's dependency parser:
+
+- **`x_ted_compute_from_text(text1, text2)`** — Parses two strings into dependency trees and computes TED in one call.
+- **`x_ted_util_transfer(text)`** — Converts a string into the `(parent, labels)` tree format used by `x_ted_compute`.
+
+These functions require spaCy and a language model. To install:
+
+```bash
+pip install x-ted[nlp]
+python -m spacy download en_core_web_sm
+```
+
+The `spacy download` step is required separately because spaCy language models are not standard PyPI packages.
+
+### Usage
 
 ```python
 from xted import x_ted_compute_from_text
 
+# Compute TED directly from text (uses en_core_web_sm by default)
 distance = x_ted_compute_from_text("The cat sat.", "A dog ran.")
 ```
 
-(Default natural language processor is "en_core_web_sm")
-
-## Tree format
-
-Nodes must be indexed in **DFS preorder** — the root is node 0 (with `parent[0] = -1`), and each node's subtree occupies a contiguous index range. To convert text into this format:
+To convert text into tree arrays for use with `x_ted_compute` directly:
 
 ```python
-parent, label = x_ted_util_transfer(text, nlp (optional))
+from xted import x_ted_util_transfer, x_ted_compute
+
+parent1, labels1 = x_ted_util_transfer("The cat sat.")
+parent2, labels2 = x_ted_util_transfer("A dog ran.")
+
+distance = x_ted_compute(parent1, labels1, parent2, labels2)
 ```
 
-Returns Python lists. `parent[i]` is the index of node i's parent (-1 for root), `label[i]` is the node label.
+You can also pass a custom spaCy model:
+
+```python
+import spacy
+nlp = spacy.load("en_core_web_lg")
+
+parent, labels = x_ted_util_transfer("The cat sat.", nlp=nlp)
+distance = x_ted_compute_from_text("The cat sat.", "A dog ran.", nlp=nlp)
+```

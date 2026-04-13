@@ -34,13 +34,19 @@ Installed automatically with the package:
 
 ### Optional: NLP support (spaCy)
 
-For `x_ted_compute_from_text` and `x_ted_util_transfer`, install with the `nlp` extra:
+The core package works entirely with tree arrays and does not require spaCy. If you want to compute tree edit distance directly from raw text, the optional `nlp` extra provides two convenience functions:
+
+- **`x_ted_compute_from_text`** — Parses two strings into dependency trees and computes TED in one call.
+- **`x_ted_util_transfer`** — Converts a string into the `(parent, labels)` tree format used by `x_ted_compute`.
+
+To install spaCy and download the required language model:
 
 ```bash
 pip install x-ted[nlp]
+python -m spacy download en_core_web_sm
 ```
 
-This adds **spaCy** and the **en_core_web_sm** English language model.
+The `spacy download` step is required separately because spaCy language models are not standard PyPI packages. The default model is `en_core_web_sm`, but any spaCy model can be passed via the `nlp` parameter.
 
 ## Verifying the installation
 

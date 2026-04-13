@@ -107,8 +107,20 @@ def x_ted_util_transfer(text, nlp=None):
     """
     # default NLP usage
     if nlp is None:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
+        try:
+            import spacy
+        except ImportError:
+            raise ImportError(
+                "spaCy is required for x_ted_util_transfer. "
+                "Install it with: pip install x-ted[nlp]"
+            ) from None
+        try:
+            nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            raise OSError(
+                "spaCy model 'en_core_web_sm' not found. "
+                "Install it with: python -m spacy download en_core_web_sm"
+            ) from None
 
     doc = nlp(text)
     # finds the root node
@@ -195,9 +207,21 @@ def x_ted_compute_from_text(text1, text2, nlp=None, num_threads=1):
         int: The tree edit distance between the two parsed trees.
     """
     
-    import spacy
     if nlp is None:
-        nlp = spacy.load("en_core_web_sm")
+        try:
+            import spacy
+        except ImportError:
+            raise ImportError(
+                "spaCy is required for x_ted_compute_from_text. "
+                "Install it with: pip install x-ted[nlp]"
+            ) from None
+        try:
+            nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            raise OSError(
+                "spaCy model 'en_core_web_sm' not found. "
+                "Install it with: python -m spacy download en_core_web_sm"
+            ) from None
     parent1, label1 = x_ted_util_transfer(text1, nlp=nlp)
     parent2, label2 = x_ted_util_transfer(text2, nlp=nlp)
     return x_ted_compute(parent1, label1, parent2, label2, num_threads=num_threads)
