@@ -5,6 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "x-ted"
 version = "0.1.0"
+description = "A parallel CPU implementation of a novel tree edit distance algorithm with advanced preprocessing"
 requires-python = ">=3.9, <3.13"
 license = "MIT"
 dependencies = [
