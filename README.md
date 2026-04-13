@@ -2,7 +2,7 @@
 
 A parallel CPU implementation of the Zhang-Shasha Tree Edit Distance (TED) algorithm, exposed as a Python package via pybind11.
 
-## Installation (coming soon)
+## Installation
 
 ```bash
 pip install x-ted
@@ -15,6 +15,8 @@ git clone https://github.com/cogrean/X-TED-CPU-.git
 cd X-TED-CPU
 pip install .
 ```
+
+For additional resources, see INSTALL.md
 
 ## Usage
 
@@ -79,6 +81,7 @@ from xted import x_ted_compute_from_text
 
 distance = x_ted_compute_from_text("The cat sat.", "A dog ran.")
 ```
+
 (Default natural language processor is "en_core_web_sm")
 
 ## Tree format

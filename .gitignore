@@ -21,8 +21,9 @@ wheelhouse/
 
 # C++ Makefile targets (cpp/Makefile)
 cpp/test_xted
-cpp/bench_compare
-cpp/ref_wrapper.o
+
+# Reference implementation (not part of the release)
+cpp/TEST_XTED_CPU_IMPLEMENTATION/
 
 # CMake
 CMakeFiles/
