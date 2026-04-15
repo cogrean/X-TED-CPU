@@ -83,6 +83,25 @@ jobs:
           name: wheels-windows-x86_64
           path: wheelhouse/
 
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install build
+
+      - run: python -m build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/
+
   publish:
     name: Publish to PyPI
     needs:
@@ -91,6 +110,7 @@ jobs:
         build-linux-aarch64,
         build-macos-arm64,
         build-windows,
+        build-sdist,
       ]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -102,6 +122,11 @@ jobs:
         with:
           pattern: wheels-*
           merge-multiple: true
+          path: dist/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
           path: dist/
 
       - uses: pypa/gh-action-pypi-publish@release/v1
