@@ -44,7 +44,7 @@ def build_zss_tree(parent, labels):
     return nodes[0]
 
 
-def compare(name, parent1, labels1, parent2, labels2, num_threads=1):
+def compare(name, parent1, labels1, parent2, labels2, num_threads=4):
     """Run both X-TED and Zhang-Shasha, print results and timings."""
     # X-TED
     t0 = time.perf_counter()
@@ -193,4 +193,56 @@ print()
 print(f"  Batch total:      {batch_ms:>10.3f} ms")
 print(f"  Individual total: {individual_ms:>10.3f} ms")
 print(f"  All results match: {all_match}")
+print()
+
+
+# ---------------------------------------------------------------------------
+# 6. Thread scaling
+# ---------------------------------------------------------------------------
+print("=" * 60)
+print("Thread scaling")
+print("=" * 60)
+
+THREAD_COUNTS = [1, 2, 4, 8]
+
+thread_datasets = [
+    ("Swissport 100", "Sampled_Dataset/1_Swissport/swissport_nodes_100.txt",
+                      "Sampled_Dataset/1_Swissport/swissport_nodes_adj_100.txt"),
+    ("Python 100",    "Sampled_Dataset/2_Python/python_nodes_100.txt",
+                      "Sampled_Dataset/2_Python/python_nodes_adj_100.txt"),
+    ("DBLP 100",      "Sampled_Dataset/4_DBLP/dblp_nodes_100.txt",
+                      "Sampled_Dataset/4_DBLP/dblp_nodes_adj_100.txt"),
+    ("Swissport 500", "Sampled_Dataset/1_Swissport/swissport_nodes_500.txt",
+                      "Sampled_Dataset/1_Swissport/swissport_nodes_adj_500.txt"),
+    ("Python 500",    "Sampled_Dataset/2_Python/python_nodes_500.txt",
+                      "Sampled_Dataset/2_Python/python_nodes_adj_500.txt"),
+    ("DBLP 500",      "Sampled_Dataset/4_DBLP/dblp_nodes_500.txt",
+                      "Sampled_Dataset/4_DBLP/dblp_nodes_adj_500.txt"),
+]
+
+header = f"  {'Dataset':<18}" + "".join(f"  {t}T ms (speedup)" for t in THREAD_COUNTS)
+print(header)
+print("  " + "-" * (len(header) - 2))
+
+for name, nodes_path, adj_path in thread_datasets:
+    p1, l1 = load_dataset(nodes_path, adj_path, tree_idx=0)
+    p2, l2 = load_dataset(nodes_path, adj_path, tree_idx=1)
+
+    timings = {}
+    results = {}
+    for t in THREAD_COUNTS:
+        t0 = time.perf_counter()
+        results[t] = x_ted_compute(p1, l1, p2, l2, num_threads=t)
+        timings[t] = (time.perf_counter() - t0) * 1000
+
+    consistent = len(set(results.values())) == 1
+    baseline = timings[1]
+
+    row = f"  {name:<18}"
+    for t in THREAD_COUNTS:
+        speedup = baseline / timings[t] if timings[t] > 0 else float("inf")
+        row += f"  {timings[t]:>7.2f} ms ({speedup:.2f}x)"
+    row += "  " + ("OK" if consistent else "MISMATCH")
+    print(row)
+
 print()
