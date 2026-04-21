@@ -169,7 +169,7 @@ namespace xted
     entrypoint for x_ted_compute from Dayi's proposal. Prepocesses and prepares trees for parallel XTED_CPU computation
     Returns: returns the final distance
     */
-    int XTED_CPU(const vector<string>& label1, const vector<int>& parent1, const vector<string>& label2, const vector<int>& parent2, const vector<vector<int>>& cost_matrix, int num_threads)
+    int XTED_CPU(const vector<string> &label1, const vector<int> &parent1, const vector<string> &label2, const vector<int> &parent2, const vector<vector<int>> &cost_matrix, int num_threads)
     {
         // convert flat parent arrays to adjacency lists
         vector<vector<int>> adj1 = parent_to_adj(parent1);
@@ -198,7 +198,7 @@ namespace xted
     Uniform-cost variant: costs 0 for matching labels, 1 otherwise. Builds the cost
     matrix internally so no Python-side construction or pybind11 STL conversion is needed.
     */
-    int XTED_CPU_uniform(const vector<string>& label1, const vector<int>& parent1, const vector<string>& label2, const vector<int>& parent2, int num_threads)
+    int XTED_CPU_uniform(const vector<string> &label1, const vector<int> &parent1, const vector<string> &label2, const vector<int> &parent2, int num_threads)
     {
         // convert flat parent arrays to adjacency lists
         vector<vector<int>> adj1 = parent_to_adj(parent1);
@@ -328,7 +328,7 @@ namespace xted
         }
 
         // Single-threaded fast path: no threading overhead
-        if (num_th <= 1)
+        if (num_th <= 1 || (m + n) < 300)
         {
             for (int d = 0; d <= max_depth; d++)
             {
@@ -364,13 +364,12 @@ namespace xted
             for (int tid = 0; tid < num_th; tid++)
             {
                 threads.emplace_back([&, tid]()
-                {
+                                     {
                     for (int i = tid; i < bucket_size; i += num_th)
                     {
                         int t = bucket[i];
                         compute(t / L, t % L, x_orl, x_kr, y_orl, y_kr, Cost, D_in_total[tid], D_tree);
-                    }
-                });
+                    } });
             }
             for (auto &th : threads)
             {
