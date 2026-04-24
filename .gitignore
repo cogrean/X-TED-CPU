@@ -28,6 +28,9 @@ cpp/TEST_XTED_CPU_IMPLEMENTATION/
 cpp/bench_compare.cpp
 cpp/ref_wrapper.h
 cpp/ref_wrapper.cpp
+cpp/seq_wrapper.h
+cpp/seq_wrapper.cpp
+cpp/X-TED_C++Sequential.cpp
 
 # CMake
 CMakeFiles/
