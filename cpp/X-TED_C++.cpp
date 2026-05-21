@@ -248,7 +248,7 @@ namespace xted
         int L = (int)y_kr.size();
 
         // creates num_th amount of D trees for threads to work within
-        int num_th = num_threads;
+        int num_th = (num_threads <= 1 || (m + n) < 300) ? 1 : num_threads;
         vector<vector<vector<int>>> D_in_total;
         D_in_total.reserve(num_th);
         for (int i = 0; i < num_th; i++)
@@ -328,7 +328,7 @@ namespace xted
         }
 
         // Single-threaded fast path: no threading overhead
-        if (num_th <= 1 || (m + n) < 300)
+        if (num_th <= 1)
         {
             for (int d = 0; d <= max_depth; d++)
             {
@@ -350,7 +350,7 @@ namespace xted
             int bucket_size = (int)bucket.size();
 
             // Small buckets: run inline on main thread to avoid thread-spawn overhead
-            if (bucket_size <= 3)
+            if (bucket_size < num_th)
             {
                 for (int t : bucket)
                 {

@@ -17,7 +17,65 @@ import sys
 import ast
 import time
 import statistics
+import ctypes
+import ctypes.util
+import threading
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Peak heap sampler — uses the same malloc_zone_statistics(size_in_use) metric
+# as bench_compare.cpp's PeakMemSampler.  Tracks LIVE allocated bytes (not RSS
+# watermark), so the delta excludes Python interpreter baseline and correctly
+# returns to zero after C++ vectors are freed between calls.
+# ---------------------------------------------------------------------------
+_libsys = ctypes.CDLL(ctypes.util.find_library("System"))
+
+class _MallocStats(ctypes.Structure):
+    _fields_ = [
+        ("blocks_in_use",       ctypes.c_uint),
+        ("size_in_use",         ctypes.c_size_t),
+        ("max_size_in_use",     ctypes.c_size_t),
+        ("size_allocated",      ctypes.c_size_t),
+        ("bytes_allocated_ever",ctypes.c_uint64),
+    ]
+
+def _heap_in_use():
+    s = _MallocStats()
+    _libsys.malloc_zone_statistics(None, ctypes.byref(s))
+    return s.size_in_use
+
+class PeakMemPoller:
+    """Context manager that polls heap_in_use every 1 ms and reports the peak
+    delta above the baseline sampled at __enter__ time."""
+    def __init__(self, interval=0.001):
+        self._interval = interval
+        self._baseline = 0
+        self._peak = 0
+        self._stop = threading.Event()
+        self._thread = None
+
+    def __enter__(self):
+        self._baseline = _heap_in_use()
+        self._peak = self._baseline
+        self._stop.clear()
+        def _poll():
+            while not self._stop.is_set():
+                v = _heap_in_use()
+                if v > self._peak:
+                    self._peak = v
+                self._stop.wait(self._interval)
+        self._thread = threading.Thread(target=_poll, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_):
+        self._stop.set()
+        self._thread.join()
+
+    @property
+    def peak_mb(self):
+        delta = self._peak - self._baseline
+        return max(0.0, delta / 1e6)
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from xted import x_ted_compute
@@ -104,7 +162,7 @@ def print_list():
         print(f"  {i:2d}.  {t['name']}{exp}")
 
 
-def run_xted(t, num_threads, num_runs=1):
+def run_xted(t, num_threads, num_runs=25):
     print(f"Test:       {t['name']}")
     print(f"Algorithm:  X-TED  ({num_threads} threads, {num_runs} runs)")
 
@@ -112,28 +170,33 @@ def run_xted(t, num_threads, num_runs=1):
     p2, l2 = load_dataset(t["nodes"], t["adj"], t["idx_b"])
     print(f"Tree sizes: {len(l1)} nodes vs {len(l2)} nodes")
 
-    # Warm up the C extension so first-call library init doesn't skew timing.
-    x_ted_compute([-1], ["a"], [-1], ["a"], num_threads=1)
+    # Poller starts here — baseline captures heap before any X-TED allocations.
+    with PeakMemPoller() as mem:
+        # Warmup: primes allocator and caches at real problem size.
+        for _ in range(10):
+            result = x_ted_compute(p1, l1, p2, l2, num_threads=num_threads)
 
-    timings = []
-    for _ in range(num_runs):
-        t0 = time.perf_counter()
-        result = x_ted_compute(p1, l1, p2, l2, num_threads=num_threads)
-        timings.append((time.perf_counter() - t0) * 1000)
+        timings = []
+        for _ in range(num_runs):
+            t0 = time.perf_counter()
+            result = x_ted_compute(p1, l1, p2, l2, num_threads=num_threads)
+            timings.append((time.perf_counter() - t0) * 1000)
 
-    mean_ms = statistics.mean(timings)
+    median_ms = statistics.median(timings)
     print(f"TED:        {result}")
     if num_runs > 1:
-        print(f"Time:       {mean_ms:.3f} ± {statistics.stdev(timings):.3f} ms")
+        print(f"Time:       median {median_ms:.3f} ms  "
+              f"(min {min(timings):.3f}, max {max(timings):.3f})")
     else:
-        print(f"Time:       {mean_ms:.3f} ms")
+        print(f"Time:       {median_ms:.3f} ms")
+    print(f"Memory:     {mem.peak_mb:.1f} MB peak working set")
 
     if t["expected"] is not None:
         status = "PASS" if result == t["expected"] else f"FAIL (expected {t['expected']})"
         print(f"Result:     {status}")
 
 
-def run_zss(t, num_runs=1):
+def run_zss(t, num_runs=25):
     print(f"Test:       {t['name']}")
     print(f"Algorithm:  Zhang-Shasha (zss, single-threaded, {num_runs} runs)")
 
@@ -144,21 +207,25 @@ def run_zss(t, num_runs=1):
     tree1 = build_zss_tree(p1, l1)
     tree2 = build_zss_tree(p2, l2)
 
-    # Warmup to match X-TED's pre-timing library warmup.
-    zss.simple_distance(zss.Node("_"), zss.Node("_"))
+    # Poller starts here — baseline captures heap before any zss allocations.
+    with PeakMemPoller() as mem:
+        for _ in range(10):
+            result = int(zss.simple_distance(tree1, tree2))
 
-    timings = []
-    for _ in range(num_runs):
-        t0 = time.perf_counter()
-        result = int(zss.simple_distance(tree1, tree2))
-        timings.append((time.perf_counter() - t0) * 1000)
+        timings = []
+        for _ in range(num_runs):
+            t0 = time.perf_counter()
+            result = int(zss.simple_distance(tree1, tree2))
+            timings.append((time.perf_counter() - t0) * 1000)
 
-    mean_ms = statistics.mean(timings)
+    median_ms = statistics.median(timings)
     print(f"TED:        {result}")
     if num_runs > 1:
-        print(f"Time:       {mean_ms:.3f} ± {statistics.stdev(timings):.3f} ms")
+        print(f"Time:       median {median_ms:.3f} ms  "
+              f"(min {min(timings):.3f}, max {max(timings):.3f})")
     else:
-        print(f"Time:       {mean_ms:.3f} ms")
+        print(f"Time:       {median_ms:.3f} ms")
+    print(f"Memory:     {mem.peak_mb:.1f} MB peak working set")
 
     if t["expected"] is not None:
         status = "PASS" if result == t["expected"] else f"FAIL (expected {t['expected']})"
@@ -203,7 +270,7 @@ def main():
             print("Error: --threads requires an integer argument")
             sys.exit(1)
 
-    num_runs = 1
+    num_runs = 25
     if "--runs" in args:
         try:
             num_runs = int(args[args.index("--runs") + 1])
